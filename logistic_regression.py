@@ -10,13 +10,11 @@ probability = .5
 
 # preprocessing
 # data source: https://archive.ics.uci.edu/ml/datasets/Haberman%27s+Survival
-data = pd.read_csv('./data/stroke-dataset.csv').dropna().head(600)
-# encode gender with 0 & 1s
-data['gender'] = [0 if i == 'Female' else 1 for i in data['gender']]
+data = pd.read_csv('./data/haberman.csv').dropna()
 # create train, test sets
-X = data[['gender', 'age', 'hypertension', 'heart_disease',
-            'avg_glucose_level', 'bmi']]
-y = data['stroke']
+X = data[['age', 'year', 'numnodes']]
+y = data['survival']
+y = [i - 1 for i in y]
 unique, counts = np.unique(y, return_counts = True)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.20)
 
@@ -28,6 +26,7 @@ for i in range(loops):
     y_hat = 1 / (1 + np.e**(-z))
     # Gradient descent
     weights = weights - lr * X_train.T.dot(y_hat - y_train) / len(X_train)
+    break
 
 # test
 z = X_test.dot(weights)
