@@ -4,22 +4,20 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
 # params
-lr = .1
-loops = 1000
+lr = .01
+loops = 5000
 probability = .5
 
 # preprocessing
-# data source: https://archive.ics.uci.edu/ml/datasets/Haberman%27s+Survival
-data = pd.read_csv('./data/haberman.csv').dropna()
+data = pd.read_csv('./data/data.csv')
 # create train, test sets
-X = data[['age', 'year', 'numnodes']]
-y = data['survival']
-y = [i - 1 for i in y]
-unique, counts = np.unique(y, return_counts = True)
+X = data[['radius_mean', 'texture_mean', 'smoothness_mean']].to_numpy()
+y = data['diagnosis'].to_numpy()
+y = [1 if i == 'M' else 0 for i in y]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.20)
 
 # train
-weights = np.random.rand(X_train.shape[1])
+weights = np.zeros(X_train.shape[1])
 for i in range(loops):
     # Predict X
     z = X_train.dot(weights)

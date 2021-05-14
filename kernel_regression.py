@@ -2,55 +2,63 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
+from scipy import stats
 
-max_iter = 1000
-lr = .03
-sigma = .20
+max_iter = 10000
+lr = .01
 probability = .5
 
-def kernel(X, v, sigma):
-    sq_sum = np.square(X - v).sum(axis=1)
-    denom = 2 * sigma * sigma
-    return np.exp(-sq_sum/denom)
+def kernel(X_train):
+    kernel_values = np.zeros(X_train.shape[0])
+    for i in range(X_train.shape[0]):
+        row = X_train[i]
+        value = (row[0] + row[1] + .5)**3
+        kernel_values[i] = 1 / (1 + np.exp(-value))
+    return kernel_values
 
 # preprocessing
-data = pd.read_csv('./data/haberman.csv').dropna()
+data = pd.read_csv('./data/data.csv')
 # create train, test sets
-X = data[['age', 'year', 'numnodes']].to_numpy()
-y = data['survival'].to_numpy()
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.25)
+X = data[['radius_mean', 'texture_mean']].to_numpy()
+y = data['diagnosis'].to_numpy()
+y = [1 if i == 'M' else 0 for i in y]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.20)
+
+np.savetxt('dataset.txt', X, delimiter=' ')
+np.savetxt('target.txt', y, delimiter=' ')
+
+# pearson's coefficients
+p_vals = open("p_vals.txt", "a")
+p1 = stats.pearsonr(X_train[:, 0], y_train)[0]
+p2 = stats.pearsonr(X_train[:, 1], y_train)[0]
+p_vals.write(str(p1) + ' ' + str(p2))
 
 # train
-weights = np.full(X_train.shape[0], .5)
-beta = np.array([0])
-for i in range(max_iter):
-    for j in range(len(X_train)):
-        # kernalize
-        row = X_train[j]
-        target = y_train[j]
-        kernels = kernel(X_train, row, sigma)
-        # apply weights
-        z = kernels.dot(weights) + beta
-        # predict
-        y_hat = 1 / (1 + np.e**(-z))
-        # Gradient descent
-        weights = weights + kernels * (target - y_hat) / len(X_train)
-        beta = beta + lr * (target - y_hat) / len(X_train)
+weights = np.zeros(X_train.shape[1])
+wfile = np.zeros((max_iter, X_train.shape[1] + 1))
+k = 0
+beta = 0
+for iter in range(max_iter):
+    kernels = kernel(X_train)
+    z = X_train.dot(weights) + kernels * k + beta
+    # predict
+    y_hat = 1 / (1 + np.exp(-z))
+    # Gradient descent
+    weights = weights - lr * X_train.T.dot(y_hat - y_train) / len(X_train)
+    k = k - lr * kernels.dot(y_hat - y_train) / len(X_train)
+    beta = beta - lr * np.sum(y_hat - y_train) / len(X_train) * .5
+    wfile[iter] = np.append(weights, k)
+
+np.savetxt('weights.txt', wfile, delimiter=' ')
 
 # test
-y_pred = []
-for row in X_test:
-    kernels = kernel(X_train, row, sigma)
-    # apply weights
-    z = kernels.dot(weights) + beta
-    # predict
-    y_hat = 1 / (1 + np.e**(-z))
-    if y_hat > probability:
-        y_pred.append(1)
-    else:
-        y_pred.append(0)
+kernels = kernel(X_test)
+# apply weights
+z = X_test.dot(weights) + kernels * k + beta
+# predict
+y_hats = 1 / (1 + np.exp(-z))
+y_pred = [1 if i > probability else 0 for i in y_hats]
 
-print(y_pred)
 # Performance
 accuracy = metrics.accuracy_score(y_test, y_pred)
 f1 = metrics.f1_score(y_test, y_pred)
