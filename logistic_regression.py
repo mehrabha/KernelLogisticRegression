@@ -21,7 +21,7 @@ weights = np.zeros(X_train.shape[1])
 for i in range(loops):
     # Predict X
     z = X_train.dot(weights)
-    y_hat = 1 / (1 + np.e**(-z))
+    y_hat = 1 / (1 + np.e**(2 -z))
     # Gradient descent
     weights = weights - lr * X_train.T.dot(y_hat - y_train) / len(X_train)
     break
