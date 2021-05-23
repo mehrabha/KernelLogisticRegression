@@ -4,16 +4,16 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from scipy import stats
 
-max_iter = 10000
-lr = .01
+max_iter = 50000
+lr = .005
 probability = .5
 
 def kernel(X_train):
     kernel_values = np.zeros(X_train.shape[0])
     for i in range(X_train.shape[0]):
         row = X_train[i]
-        value = (row[0] + row[1] + .5)**3
-        kernel_values[i] = 1 / (1 + np.exp(-value))
+        value = (row[0] + row[1])**2
+        kernel_values[i] = 1 / (1 + np.exp(6 - value))
     return kernel_values
 
 # preprocessing
@@ -24,11 +24,11 @@ y = data['diagnosis'].to_numpy()
 y = [1 if i == 'M' else 0 for i in y]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.20)
 
-np.savetxt('dataset.txt', X, delimiter=' ')
-np.savetxt('target.txt', y, delimiter=' ')
+np.savetxt('dataset.txt', X, delimiter=' ', fmt='%f')
+np.savetxt('target.txt', y, delimiter=' ', fmt='%f')
 
 # pearson's coefficients
-p_vals = open("p_vals.txt", "a")
+p_vals = open("p_vals.txt", "w")
 p1 = stats.pearsonr(X_train[:, 0], y_train)[0]
 p2 = stats.pearsonr(X_train[:, 1], y_train)[0]
 p_vals.write(str(p1) + ' ' + str(p2))
@@ -46,15 +46,15 @@ for iter in range(max_iter):
     # Gradient descent
     weights = weights - lr * X_train.T.dot(y_hat - y_train) / len(X_train)
     k = k - lr * kernels.dot(y_hat - y_train) / len(X_train)
-    beta = beta - lr * np.sum(y_hat - y_train) / len(X_train) * .5
+    beta = beta #- lr * np.sum(y_hat - y_train) / len(X_train) * .5
     wfile[iter] = np.append(weights, k)
 
-np.savetxt('weights.txt', wfile, delimiter=' ')
+np.savetxt('weights.txt', wfile, delimiter=' ', fmt='%f')
 
 # test
 kernels = kernel(X_test)
 # apply weights
-z = X_test.dot(weights) + kernels * k + beta
+z = X_test.dot(weights) + kernels * k #+ beta
 # predict
 y_hats = 1 / (1 + np.exp(-z))
 y_pred = [1 if i > probability else 0 for i in y_hats]
